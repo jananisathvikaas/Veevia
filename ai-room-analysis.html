@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Veevia — AI Room Analysis</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:#F5F0E8;color:#1E1008;min-height:100vh;}
+nav{background:#F5F0E8;border-bottom:1px solid rgba(30,16,8,0.1);padding:0 2rem;height:60px;display:flex;align-items:center;justify-content:space-between;}
+.logo{font-family:'DM Sans',sans-serif;font-size:1.1rem;font-weight:500;color:#1E1008;text-decoration:none;}
+.logo span{color:#B85C38;}
+.nav-btn{background:transparent;border:1.5px solid #1E1008;color:#1E1008;padding:0.45rem 1.2rem;border-radius:2rem;font-size:0.7rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;}
+.page{display:none;padding:2rem;}
+.page.active{display:block;}
+.upload-hero{text-align:center;padding:2.5rem 1rem 2rem;}
+.eyebrow{font-size:0.65rem;font-weight:500;letter-spacing:0.15em;text-transform:uppercase;color:#B85C38;margin-bottom:0.75rem;display:flex;align-items:center;justify-content:center;gap:0.3rem;}
+.eyebrow::before{content:'✦';font-size:0.55rem;}
+.upload-hero h1{font-family:'Cormorant Garamond',serif;font-size:clamp(1.8rem,4vw,3rem);font-weight:400;line-height:1.15;color:#1E1008;margin-bottom:0.75rem;}
+.upload-hero h1 em{font-style:italic;color:#B85C38;}
+.upload-hero p{font-size:0.9rem;color:#8C7B6E;line-height:1.7;max-width:420px;margin:0 auto 2rem;}
+.upload-box{border:2px dashed rgba(184,92,56,0.35);border-radius:1.25rem;padding:3rem 2rem;text-align:center;cursor:pointer;transition:all 0.2s;background:rgba(184,92,56,0.03);max-width:500px;margin:0 auto;}
+.upload-box:hover{border-color:#B85C38;background:rgba(184,92,56,0.06);}
+.upload-box.dragging{border-color:#B85C38;background:rgba(184,92,56,0.1);}
+.upload-icon{font-size:2.5rem;margin-bottom:1rem;opacity:0.5;}
+.upload-box h3{font-size:1rem;font-weight:500;color:#1E1008;margin-bottom:0.4rem;}
+.upload-box p{font-size:0.8rem;color:#8C7B6E;}
+.upload-box p span{color:#B85C38;font-weight:500;cursor:pointer;}
+.style-section{max-width:500px;margin:1.5rem auto 0;}
+.style-section label{display:block;font-size:0.75rem;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;color:#8C7B6E;margin-bottom:0.5rem;}
+.style-row{display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1rem;}
+.style-chip{padding:0.4rem 0.9rem;border-radius:2rem;border:1.5px solid rgba(30,16,8,0.15);font-size:0.78rem;color:#1E1008;cursor:pointer;transition:all 0.2s;background:#fff;}
+.style-chip:hover{border-color:#B85C38;color:#B85C38;}
+.style-chip.selected{background:#B85C38;border-color:#B85C38;color:#fff;}
+.budget-row{display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1.5rem;}
+.budget-chip{padding:0.4rem 0.9rem;border-radius:2rem;border:1.5px solid rgba(30,16,8,0.15);font-size:0.78rem;color:#1E1008;cursor:pointer;transition:all 0.2s;background:#fff;}
+.budget-chip:hover{border-color:#B85C38;}
+.budget-chip.selected{background:#1E1008;border-color:#1E1008;color:#F5F0E8;}
+.analyse-btn{width:100%;max-width:500px;display:block;margin:0 auto;background:#B85C38;color:#fff;border:none;padding:0.9rem;border-radius:3rem;font-size:0.9rem;font-weight:500;cursor:pointer;transition:background 0.2s;opacity:0.4;pointer-events:none;}
+.analyse-btn.ready{opacity:1;pointer-events:all;}
+.analyse-btn.ready:hover{background:#C96A44;}
+.loading-page{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;text-align:center;}
+.room-preview{width:220px;height:160px;border-radius:1rem;object-fit:cover;margin-bottom:2rem;border:3px solid rgba(184,92,56,0.2);}
+.room-preview-placeholder{width:220px;height:160px;border-radius:1rem;background:linear-gradient(135deg,#C4A882,#8B6B4A);margin-bottom:2rem;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.5);font-size:0.8rem;}
+.loading-dots{display:flex;gap:8px;justify-content:center;margin:1.5rem 0;}
+.dot{width:8px;height:8px;border-radius:50%;background:#B85C38;animation:pulse 1.4s ease-in-out infinite;}
+.dot:nth-child(2){animation-delay:0.2s;}
+.dot:nth-child(3){animation-delay:0.4s;}
+@keyframes pulse{0%,80%,100%{opacity:0.3;transform:scale(0.8);}40%{opacity:1;transform:scale(1);}}
+.loading-steps{list-style:none;text-align:left;max-width:280px;}
+.loading-steps li{font-size:0.82rem;color:#8C7B6E;padding:0.3rem 0;display:flex;align-items:center;gap:0.5rem;}
+.loading-steps li.done{color:#1E1008;}
+.loading-steps li.done::before{content:'✓';color:#B85C38;font-weight:600;}
+.loading-steps li:not(.done)::before{content:'○';color:#D4C4B8;}
+.results-header{display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap;}
+.back-btn{background:transparent;border:1.5px solid rgba(30,16,8,0.2);color:#1E1008;padding:0.4rem 1rem;border-radius:2rem;font-size:0.75rem;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:0.3rem;}
+.results-title{font-family:'Cormorant Garamond',serif;font-size:1.6rem;font-weight:400;color:#1E1008;flex:1;}
+.results-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1.5rem;}
+@media(max-width:600px){.results-grid{grid-template-columns:1fr;}}
+.result-card{background:#fff;border-radius:1.25rem;padding:1.25rem;border:1px solid rgba(30,16,8,0.08);}
+.result-card-header{display:flex;align-items:center;gap:0.6rem;margin-bottom:0.75rem;}
+.result-icon{width:32px;height:32px;border-radius:50%;background:rgba(184,92,56,0.1);display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;}
+.result-card-title{font-size:0.85rem;font-weight:500;color:#1E1008;}
+.result-card-body{font-size:0.82rem;color:#8C7B6E;line-height:1.7;}
+.suggestion-list{list-style:none;}
+.suggestion-list li{display:flex;align-items:flex-start;gap:0.5rem;padding:0.45rem 0;border-bottom:1px solid rgba(30,16,8,0.06);font-size:0.82rem;color:#1E1008;line-height:1.5;}
+.suggestion-list li:last-child{border-bottom:none;}
+.suggestion-list li::before{content:'✦';color:#B85C38;font-size:0.55rem;margin-top:0.35rem;flex-shrink:0;}
+.full-card{grid-column:1/-1;background:#fff;border-radius:1.25rem;padding:1.25rem;border:1px solid rgba(30,16,8,0.08);}
+.score-row{display:flex;gap:1rem;margin-bottom:1rem;flex-wrap:wrap;}
+.score-item{flex:1;min-width:100px;background:#F5F0E8;border-radius:0.75rem;padding:0.75rem;text-align:center;}
+.score-num{font-family:'Cormorant Garamond',serif;font-size:1.5rem;font-weight:500;color:#B85C38;}
+.score-label{font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:#8C7B6E;margin-top:0.2rem;}
+.action-row{display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:1.5rem;}
+.btn-terra{background:#B85C38;color:#fff;border:none;padding:0.75rem 1.5rem;border-radius:3rem;font-size:0.82rem;font-weight:500;cursor:pointer;}
+.btn-outline-dark{background:transparent;color:#1E1008;border:1.5px solid #1E1008;padding:0.75rem 1.5rem;border-radius:3rem;font-size:0.82rem;font-weight:500;cursor:pointer;}
+input[type=file]{display:none;}
+.uploaded-img-preview{width:100%;max-width:500px;height:180px;object-fit:cover;border-radius:1rem;margin:0 auto 1rem;display:block;border:2px solid rgba(184,92,56,0.2);}
+</style>
+</head>
+<body>
+<nav>
+  <a class="logo" href="index.html">Vee<span>via</span></a>
+  <button class="nav-btn" onclick="showPage('upload')">New Analysis</button>
+</nav>
+<div id="page-upload" class="page active" style="max-width:600px;margin:0 auto;">
+  <div class="upload-hero">
+    <div class="eyebrow">AI Room Analysis</div>
+    <h1>Upload your room,<br>get <em>instant</em> design magic</h1>
+    <p>Our AI analyses your space and gives personalised suggestions based on your style and budget.</p>
+  </div>
+  <div class="upload-box" id="uploadBox" onclick="document.getElementById('fileInput').click()" ondragover="handleDrag(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+    <div class="upload-icon">🏠</div>
+    <h3>Drop your room photo here</h3>
+    <p>or <span>browse to upload</span> · JPG, PNG up to 10MB</p>
+  </div>
+  <img id="imgPreview" class="uploaded-img-preview" style="display:none;"/>
+  <input type="file" id="fileInput" accept="image/*" onchange="handleFile(this.files[0])"/>
+  <div class="style-section">
+    <label>Your style preference</label>
+    <div class="style-row" id="styleRow">
+      <span class="style-chip" onclick="selectChip(this,'style')">Modern</span>
+      <span class="style-chip" onclick="selectChip(this,'style')">Minimalist</span>
+      <span class="style-chip" onclick="selectChip(this,'style')">Bohemian</span>
+      <span class="style-chip" onclick="selectChip(this,'style')">Traditional</span>
+      <span class="style-chip" onclick="selectChip(this,'style')">Industrial</span>
+      <span class="style-chip" onclick="selectChip(this,'style')">Scandinavian</span>
+    </div>
+    <label>Budget range</label>
+    <div class="budget-row" id="budgetRow">
+      <span class="budget-chip" onclick="selectChip(this,'budget')">Under ₹10,000</span>
+      <span class="budget-chip" onclick="selectChip(this,'budget')">₹10k – ₹30k</span>
+      <span class="budget-chip" onclick="selectChip(this,'budget')">₹30k – ₹75k</span>
+      <span class="budget-chip" onclick="selectChip(this,'budget')">₹75k+</span>
+    </div>
+  </div>
+  <button class="analyse-btn" id="analyseBtn" onclick="startAnalysis()">✦ Analyse My Room</button>
+</div>
+<div id="page-loading" class="page">
+  <div class="loading-page">
+    <img id="loadingImg" class="room-preview" style="display:none;"/>
+    <div id="loadingPlaceholder" class="room-preview-placeholder">Your room</div>
+    <div class="eyebrow">AI is working</div>
+    <p style="font-family:'Cormorant Garamond',serif;font-size:1.4rem;color:#1E1008;margin-bottom:0.5rem;">Analysing your space...</p>
+    <div class="loading-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+    <ul class="loading-steps" id="loadingSteps">
+      <li id="step1">Scanning room dimensions & lighting</li>
+      <li id="step2">Identifying existing furniture & style</li>
+      <li id="step3">Matching to your preferences</li>
+      <li id="step4">Generating design suggestions</li>
+    </ul>
+  </div>
+</div>
+<div id="page-results" class="page" style="max-width:800px;margin:0 auto;">
+  <div class="results-header">
+    <button class="back-btn" onclick="showPage('upload')">← New Room</button>
+    <div class="results-title">Your Design Analysis</div>
+  </div>
+  <div id="resultsContent"></div>
+</div>
+<script>
+let uploadedFile=null,uploadedBase64=null,selectedStyle='',selectedBudget='';
+function showPage(n){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+n).classList.add('active');}
+function selectChip(el,type){const row=el.parentElement;row.querySelectorAll('.'+(type==='style'?'style':'budget')+'-chip').forEach(c=>c.classList.remove('selected'));el.classList.add('selected');if(type==='style')selectedStyle=el.textContent;else selectedBudget=el.textContent;checkReady();}
+function checkReady(){const btn=document.getElementById('analyseBtn');if(uploadedFile&&selectedStyle&&selectedBudget)btn.classList.add('ready');else btn.classList.remove('ready');}
+function handleFile(file){if(!file)return;uploadedFile=file;const reader=new FileReader();reader.onload=e=>{uploadedBase64=e.target.result.split(',')[1];const preview=document.getElementById('imgPreview');preview.src=e.target.result;preview.style.display='block';document.getElementById('uploadBox').style.display='none';checkReady();};reader.readAsDataURL(file);}
+function handleDrag(e){e.preventDefault();document.getElementById('uploadBox').classList.add('dragging');}
+function handleDragLeave(e){document.getElementById('uploadBox').classList.remove('dragging');}
+function handleDrop(e){e.preventDefault();document.getElementById('uploadBox').classList.remove('dragging');handleFile(e.dataTransfer.files[0]);}
+async function startAnalysis(){showPage('loading');const li=document.getElementById('loadingImg'),lp=document.getElementById('loadingPlaceholder');if(uploadedBase64){li.src='data:image/jpeg;base64,'+uploadedBase64;li.style.display='block';lp.style.display='none';}const steps=['step1','step2','step3','step4'];for(let i=0;i<steps.length;i++){await new Promise(r=>setTimeout(r,900));document.getElementById(steps[i]).classList.add('done');}await callAI();}
+async function callAI(){const mediaType=uploadedFile.type||'image/jpeg';const prompt=`You are Veevia, an expert AI interior designer specialising in Indian homes. Analyse this room photo and provide detailed, actionable interior design suggestions.\n\nThe user's style preference: ${selectedStyle}\nTheir budget: ${selectedBudget}\n\nRespond ONLY in this exact JSON format with no extra text:\n{\n  "roomType": "e.g. Living Room",\n  "overallScore": 72,\n  "lightingScore": 65,\n  "spaceScore": 78,\n  "styleScore": 70,\n  "currentStyle": "2-3 sentence description of current room style and vibe",\n  "topSuggestions": ["Specific actionable suggestion 1 with product/item name and price range in INR","Specific actionable suggestion 2","Specific actionable suggestion 3","Specific actionable suggestion 4","Specific actionable suggestion 5"],\n  "colorPalette": "Recommended colour palette description for this room",\n  "lightingTips": "2-3 specific lighting improvements",\n  "quickWins": ["Easy change under 2000 INR that makes big difference","Another quick win under 3000 INR"],\n  "designerNote": "One encouraging sentence about the room potential"\n}`;
+try{const response=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:mediaType,data:uploadedBase64}},{type:'text',text:prompt}]}]})});const data=await response.json();const text=data.content.map(i=>i.text||'').join('');const clean=text.replace(/```json|```/g,'').trim();const result=JSON.parse(clean);renderResults(result);}catch(err){renderError();}}
+function renderResults(r){const html=`<div class="score-row"><div class="score-item"><div class="score-num">${r.overallScore}</div><div class="score-label">Overall Score</div></div><div class="score-item"><div class="score-num">${r.lightingScore}</div><div class="score-label">Lighting</div></div><div class="score-item"><div class="score-num">${r.spaceScore}</div><div class="score-label">Space Use</div></div><div class="score-item"><div class="score-num">${r.styleScore}</div><div class="score-label">Style</div></div></div><div class="results-grid"><div class="result-card"><div class="result-card-header"><div class="result-icon">🏠</div><div class="result-card-title">Room Overview</div></div><div class="result-card-body">${r.currentStyle}</div></div><div class="result-card"><div class="result-card-header"><div class="result-icon">🎨</div><div class="result-card-title">Colour Palette</div></div><div class="result-card-body">${r.colorPalette}</div></div><div class="full-card"><div class="result-card-header"><div class="result-icon">✨</div><div class="result-card-title">Top Design Suggestions</div></div><ul class="suggestion-list">${r.topSuggestions.map(s=>`<li>${s}</li>`).join('')}</ul></div><div class="result-card"><div class="result-card-header"><div class="result-icon">💡</div><div class="result-card-title">Lighting Tips</div></div><div class="result-card-body">${r.lightingTips}</div></div><div class="result-card"><div class="result-card-header"><div class="result-icon">⚡</div><div class="result-card-title">Quick Wins</div></div><ul class="suggestion-list">${r.quickWins.map(q=>`<li>${q}</li>`).join('')}</ul></div><div class="full-card" style="background:rgba(184,92,56,0.06);border-color:rgba(184,92,56,0.2);"><div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.1em;color:#B85C38;margin-bottom:0.4rem;">✦ Designer's Note</div><div style="font-family:'Cormorant Garamond',serif;font-size:1.1rem;font-style:italic;color:#1E1008;line-height:1.6;">"${r.designerNote}"</div></div></div><div class="action-row"><button class="btn-terra" onclick="showPage('upload')">✦ Analyse Another Room</button><a href="index.html" class="btn-outline-dark" style="text-decoration:none;padding:0.75rem 1.5rem;border-radius:3rem;font-size:0.82rem;font-weight:500;border:1.5px solid #1E1008;color:#1E1008;">Connect with a Designer</a></div>`;document.getElementById('resultsContent').innerHTML=html;showPage('results');}
+function renderError(){document.getElementById('resultsContent').innerHTML=`<div style="text-align:center;padding:3rem;"><div style="font-size:2rem;margin-bottom:1rem;">😔</div><p style="color:#8C7B6E;">Something went wrong. Please try again.</p><button class="btn-terra" style="margin-top:1rem;" onclick="showPage('upload')">Try Again</button></div>`;showPage('results');}
+</script>
+</body>
+</html>
